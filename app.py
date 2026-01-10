@@ -1,5 +1,9 @@
 import streamlit as st
 
+from visualizations.kpis import render_kpis
+from visualizations.charts import temp_comparison_chart, radar_weather_chart
+
+
 from services.weather_api import fetch_weather, WeatherAPIError
 from analytics.processor import extract_features
 from analytics.indicators import comfort_index, wind_risk
@@ -37,7 +41,28 @@ if analyze:
             features["health"] = weather_health_score(features)
 
         st.success(f"Weather analysis for {features['city']}")
-        st.write(features)  # TEMP: we will replace this with KPIs & charts
+        
+        # KPI Section
+        st.subheader("Key Metrics")
+        render_kpis(features)
+
+        st.markdown("---")
+
+        # Charts Section
+        left, right = st.columns(2)
+
+        with left:
+            st.plotly_chart(
+                temp_comparison_chart(features),
+                use_container_width=True
+            )
+
+        with right:
+            st.plotly_chart(
+                radar_weather_chart(features),
+                use_container_width=True
+            )
+
 
     except WeatherAPIError as e:
         st.error(str(e))
