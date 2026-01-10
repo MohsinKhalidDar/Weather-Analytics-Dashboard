@@ -2,6 +2,11 @@ import streamlit as st
 
  
 # Core services & analytics
+
+from services.weather_api import fetch_forecast
+from analytics.forecast_processor import process_daily_forecast
+from visualizations.forecast_charts import forecast_temperature_chart
+
  
 from services.weather_api import fetch_weather, WeatherAPIError
 from analytics.processor import extract_features
@@ -124,6 +129,18 @@ if analyze:
                 "Not enough historical data yet. "
                 "Analyze this city multiple times to build trends."
             )
+            
+        st.markdown("---")
+        st.subheader("Weather Forecast (Next 5 Days)")
+
+        with st.spinner("Fetching weather forecast..."):
+            forecast_raw = fetch_forecast(features["city"], days=5)
+            forecast_df = process_daily_forecast(forecast_raw)
+
+        forecast_fig = forecast_temperature_chart(forecast_df)
+
+        st.plotly_chart(forecast_fig, use_container_width=True)
+            
 
     except WeatherAPIError as e:
         st.error(str(e))

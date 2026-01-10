@@ -33,3 +33,31 @@ def fetch_weather(city: str) -> dict:
 
     except requests.exceptions.RequestException:
         raise WeatherAPIError("Network error while calling Weather API")
+
+
+
+def fetch_forecast(city: str, days: int = 5) -> dict:
+    if not WEATHER_API_KEY:
+        raise WeatherAPIError("Missing API key")
+
+    params = {
+        "q": city,
+        "appid": WEATHER_API_KEY,
+        "units": "metric",
+        "cnt": days
+    }
+
+    try:
+        response = requests.get(
+            f"{BASE_URL}/forecast/daily",
+            params=params,
+            timeout=REQUEST_TIMEOUT
+        )
+        response.raise_for_status()
+        return response.json()
+
+    except requests.exceptions.Timeout:
+        raise WeatherAPIError("Forecast request timed out")
+
+    except requests.exceptions.RequestException:
+        raise WeatherAPIError("Failed to fetch forecast data")
