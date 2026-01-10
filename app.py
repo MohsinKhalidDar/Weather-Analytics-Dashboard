@@ -3,12 +3,18 @@ import streamlit as st
 from visualizations.kpis import render_kpis
 from visualizations.charts import temp_comparison_chart, radar_weather_chart
 
+from storage.database import get_connection, insert_weather
 
 from services.weather_api import fetch_weather, WeatherAPIError
 from analytics.processor import extract_features
 from analytics.indicators import comfort_index, wind_risk
 from analytics.health_scores import weather_health_score
 from utils.validators import validate_city
+
+
+@st.cache_resource
+def get_db():
+    return get_connection()
 
 st.set_page_config(
     page_title="Weather Analytics Dashboard",
@@ -41,6 +47,12 @@ if analyze:
             features["health"] = weather_health_score(features)
 
         st.success(f"Weather analysis for {features['city']}")
+        
+        
+
+        conn = get_db()
+        insert_weather(conn, features)
+
         
         # KPI Section
         st.subheader("Key Metrics")
