@@ -1,6 +1,10 @@
 import sqlite3
 import pandas as pd
-from storage.models import CREATE_WEATHER_TABLE
+from storage.models import (
+    CREATE_WEATHER_TABLE,
+    CREATE_FORECAST_ACCURACY_TABLE
+)
+
 
 DB_PATH = "storage/weather.db"
 
@@ -11,6 +15,7 @@ def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.execute(CREATE_WEATHER_TABLE)
     create_forecast_table(conn)
+    conn.execute(CREATE_FORECAST_ACCURACY_TABLE)
     return conn
 
 
@@ -154,3 +159,49 @@ def fetch_cached_forecast(conn, city: str):
 
     df["date"] = pd.to_datetime(df["date"])
     return df
+
+# -----------------------------------
+
+def fetch_yesterday_forecast(conn, city: str, date: str):
+    cursor = conn.execute("""
+        SELECT avg_temp
+        FROM weather_forecast
+        WHERE city = ? AND date = ?
+    """, (city, date))
+
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def insert_forecast_accuracy(
+    conn,
+    city: str,
+    date: str,
+    predicted_avg: float,
+    actual_avg: float
+):
+    abs_error = abs(predicted_avg - actual_avg)
+
+    conn.execute("""
+        INSERT INTO forecast_accuracy
+        (city, date, predicted_avg, actual_avg, abs_error)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        city,
+        date,
+        predicted_avg,
+        actual_avg,
+        abs_error
+    ))
+    conn.commit()
+
+
+def fetch_forecast_accuracy(conn, city: str):
+    cursor = conn.execute("""
+        SELECT date, abs_error
+        FROM forecast_accuracy
+        WHERE city = ?
+        ORDER BY date
+    """, (city,))
+
+    return cursor.fetchall()

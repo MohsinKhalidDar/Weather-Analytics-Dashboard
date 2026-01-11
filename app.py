@@ -1,8 +1,12 @@
 import streamlit as st
+from datetime import datetime, timedelta
 
 # =========================
 # Core services & analytics
 # =========================
+
+from analytics.accuracy import prepare_accuracy_df
+from visualizations.accuracy_charts import accuracy_trend_chart
 
 from services.weather_api import (
     fetch_weather,
@@ -15,6 +19,7 @@ from analytics.indicators import comfort_index, wind_risk
 from analytics.health_scores import weather_health_score
 from analytics.weatherapi_forecast_processor import process_weatherapi_forecast
 from analytics.alerts import generate_weather_alerts
+from analytics.accuracy import compute_mae
 
 from utils.validators import validate_city
 
@@ -42,7 +47,10 @@ from storage.database import (
     insert_weather,
     fetch_weather_history,
     insert_forecast,
-    fetch_cached_forecast
+    fetch_cached_forecast,
+    fetch_yesterday_forecast,
+    insert_forecast_accuracy,
+    fetch_forecast_accuracy
 )
 
 
@@ -112,11 +120,61 @@ if analyze:
         conn = get_db()
         insert_weather(conn, features)
 
+        # ==================================================
+        # Forecast Accuracy Tracking (Actual vs Predicted)
+        # ==================================================
+        today = datetime.utcnow().date()
+        yesterday = today - timedelta(days=1) 
+        #--------use below line instead of above for testing-Forecast Accuracy Trend--------------------
+        # yesterday = today  
+
+
+        predicted_avg = fetch_yesterday_forecast(
+            conn,
+            features["city"],
+            yesterday.strftime("%Y-%m-%d")
+        )
+
+        if predicted_avg is not None:
+            insert_forecast_accuracy(
+                conn,
+                features["city"],
+                yesterday.strftime("%Y-%m-%d"),
+                predicted_avg=predicted_avg,
+                actual_avg=features["temperature"]
+            )
+
         # -----------------------------
         # KPI Section
         # -----------------------------
         st.subheader("Key Metrics")
         render_kpis(features)
+
+        # ---------- Forecast Accuracy KPI ----------
+        accuracy_rows = fetch_forecast_accuracy(conn, features["city"])
+        mae = compute_mae(accuracy_rows)
+
+        if mae is not None:
+            st.metric("📉 Forecast MAE (°C)", mae)
+            
+        # -----------------------------
+        # Forecast Accuracy Trend
+        # -----------------------------
+        accuracy_df = prepare_accuracy_df(accuracy_rows)
+
+        if accuracy_df is not None and len(accuracy_df) >= 2:
+            st.markdown("---")
+            st.subheader("📈 Forecast Accuracy Trend")
+
+            acc_fig = accuracy_trend_chart(accuracy_df)
+            st.plotly_chart(acc_fig, use_container_width=True)
+        else:
+            st.info(
+                "Forecast accuracy trend will appear after multiple days "
+                "of forecast evaluation."
+            )
+            
+            
 
         st.markdown("---")
 
@@ -189,7 +247,7 @@ if analyze:
                 )
 
         # -----------------------------
-        # Smart Weather Alerts (LIVE + CACHED)
+        # Smart Weather Alerts
         # -----------------------------
         if forecast_df is not None:
             alerts = generate_weather_alerts(forecast_df)

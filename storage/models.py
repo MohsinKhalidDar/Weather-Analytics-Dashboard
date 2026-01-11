@@ -13,3 +13,13 @@ CREATE TABLE IF NOT EXISTS weather_history (
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 """
+CREATE_FORECAST_ACCURACY_TABLE = """
+CREATE TABLE IF NOT EXISTS forecast_accuracy (
+    city TEXT,
+    date TEXT,
+    predicted_avg REAL,
+    actual_avg REAL,
+    abs_error REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"""
