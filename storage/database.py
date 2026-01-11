@@ -4,10 +4,9 @@ from storage.models import CREATE_WEATHER_TABLE
 
 DB_PATH = "storage/weather.db"
 
-
-# ---------------------------
+# ==================================================
 # Connection
-# ---------------------------
+# ==================================================
 def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.execute(CREATE_WEATHER_TABLE)
@@ -15,29 +14,38 @@ def get_connection():
     return conn
 
 
-# ---------------------------
+# ==================================================
 # Current & Historical Weather
-# ---------------------------
+# ==================================================
 def insert_weather(conn, data: dict):
     query = """
     INSERT INTO weather_history (
-        city, temperature, feels_like,
-        humidity, pressure, wind_speed,
-        condition, comfort, health
+        city,
+        temperature,
+        feels_like,
+        humidity,
+        pressure,
+        wind_speed,
+        condition,
+        comfort,
+        health
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
-    conn.execute(query, (
-        data["city"],
-        data["temperature"],
-        data["feels_like"],
-        data["humidity"],
-        data["pressure"],
-        data["wind_speed"],
-        data["condition"],
-        data["comfort"],
-        data["health"]
-    ))
+    conn.execute(
+        query,
+        (
+            data["city"],
+            data["temperature"],
+            data["feels_like"],
+            data["humidity"],
+            data["pressure"],
+            data["wind_speed"],
+            data["condition"],
+            data["comfort"],
+            data["health"],
+        ),
+    )
     conn.commit()
 
 
@@ -59,50 +67,74 @@ def fetch_weather_history(city: str, limit: int = 200):
     return rows
 
 
-# ---------------------------
-# Forecast Cache
-# ---------------------------
+# ==================================================
+# Forecast Cache (WITH CONDITIONS)
+# ==================================================
 def create_forecast_table(conn):
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS weather_forecast (
             city TEXT,
             date TEXT,
             min_temp REAL,
             max_temp REAL,
             avg_temp REAL,
+            condition TEXT,
             fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    """)
+        """
+    )
     conn.commit()
 
 
 def insert_forecast(conn, city: str, df: pd.DataFrame):
-    # Remove old forecast for city
+    """
+    Cache forecast for a city.
+    Old forecast is replaced to keep cache fresh.
+    """
+
     conn.execute("DELETE FROM weather_forecast WHERE city = ?", (city,))
 
     for _, row in df.iterrows():
-        conn.execute("""
-            INSERT INTO weather_forecast
-            (city, date, min_temp, max_temp, avg_temp)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            city,
-            pd.to_datetime(row["date"]).strftime("%Y-%m-%d"),
-            row["min_temp"],
-            row["max_temp"],
-            row["avg_temp"]
-        ))
+        conn.execute(
+            """
+            INSERT INTO weather_forecast (
+                city,
+                date,
+                min_temp,
+                max_temp,
+                avg_temp,
+                condition
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                city,
+                pd.to_datetime(row["date"]).strftime("%Y-%m-%d"),
+                row["min_temp"],
+                row["max_temp"],
+                row["avg_temp"],
+                row.get("condition"),  # SAFE access
+            ),
+        )
 
     conn.commit()
 
 
 def fetch_cached_forecast(conn, city: str):
-    cursor = conn.execute("""
-        SELECT date, min_temp, max_temp, avg_temp
+    cursor = conn.execute(
+        """
+        SELECT
+            date,
+            min_temp,
+            max_temp,
+            avg_temp,
+            condition
         FROM weather_forecast
         WHERE city = ?
         ORDER BY date
-    """, (city,))
+        """,
+        (city,),
+    )
 
     rows = cursor.fetchall()
 
@@ -111,7 +143,14 @@ def fetch_cached_forecast(conn, city: str):
 
     df = pd.DataFrame(
         rows,
-        columns=["date", "min_temp", "max_temp", "avg_temp"]
+        columns=[
+            "date",
+            "min_temp",
+            "max_temp",
+            "avg_temp",
+            "condition",
+        ],
     )
+
     df["date"] = pd.to_datetime(df["date"])
     return df

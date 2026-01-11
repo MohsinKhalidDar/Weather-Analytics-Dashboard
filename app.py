@@ -21,7 +21,7 @@ from utils.validators import validate_city
 # =========================
 # Visualization layer
 # =========================
-
+from visualizations.forecast_conditions import render_forecast_conditions
 from visualizations.kpis import render_kpis
 from visualizations.charts import (
     temp_comparison_chart,
@@ -189,7 +189,7 @@ if analyze:
                 )
 
         # -----------------------------
-        # Render Forecast UI (ONLY ONCE)
+        # Render Forecast UI  
         # -----------------------------
         if forecast_df is not None:
             st.markdown("---")
@@ -198,6 +198,10 @@ if analyze:
 
             forecast_fig = forecast_temperature_chart(forecast_df)
             st.plotly_chart(forecast_fig, use_container_width=True)
+
+            st.markdown("### Weather Conditions")
+            render_forecast_conditions(forecast_df)
+
 
         else:
             st.markdown("---")

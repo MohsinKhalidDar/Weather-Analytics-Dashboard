@@ -14,12 +14,12 @@ def process_weatherapi_forecast(forecast_json: dict) -> pd.DataFrame:
 
     for day in forecast_json["forecast"]["forecastday"]:
         records.append({
-            "date": day["date"],
+            "date": pd.to_datetime(day["date"]),
             "min_temp": day["day"]["mintemp_c"],
             "max_temp": day["day"]["maxtemp_c"],
             "avg_temp": day["day"]["avgtemp_c"],
-            "humidity": day["day"]["avghumidity"],
-            "condition": day["day"]["condition"]["text"]
+            "condition": day["day"]["condition"]["text"],   
+            "icon": day["day"]["condition"]["icon"]   
         })
 
     df = pd.DataFrame(records)
