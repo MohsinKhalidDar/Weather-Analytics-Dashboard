@@ -174,6 +174,9 @@ if analyze:
                     features["city"], days=5
                 )
                 forecast_df = process_weatherapi_forecast(forecast_raw)
+                
+                # st.write("Forecast DF columns:", forecast_df.columns.tolist()) #--------temporary debug line
+
 
                 # Cache successful forecast
                 insert_forecast(conn, features["city"], forecast_df)
