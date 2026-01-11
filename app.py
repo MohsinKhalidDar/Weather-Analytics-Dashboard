@@ -26,6 +26,7 @@ from visualizations.charts import (
 
 # Storage layer
 from storage.database import get_connection, insert_weather, fetch_weather_history
+from storage.database import insert_forecast, fetch_cached_forecast
 
  
 # Cached DB connection
@@ -133,12 +134,33 @@ if analyze:
         st.markdown("---")
         st.subheader("Weather Forecast (Next 5 Days)")
 
-        with st.spinner("Fetching weather forecast..."):
-            forecast_raw = fetch_daily_forecast_weatherapi(features["city"], days=5)
-            forecast_df = process_weatherapi_forecast(forecast_raw)
+        st.markdown("---")
+        st.subheader("Weather Forecast (Next 5 Days)")
 
-        forecast_fig = forecast_temperature_chart(forecast_df)
-        st.plotly_chart(forecast_fig, use_container_width=True)
+        conn = get_db()
+
+        try:
+            with st.spinner("Fetching weather forecast..."):
+                forecast_raw = fetch_daily_forecast_weatherapi(features["city"], days=5)
+                forecast_df = process_weatherapi_forecast(forecast_raw)
+
+                # Cache successful forecast
+                insert_forecast(conn, features["city"], forecast_df)
+                st.caption("Live forecast data")
+
+        except WeatherAPIError:
+            forecast_df = fetch_cached_forecast(conn, features["city"])
+
+            if forecast_df is not None:
+                st.caption("Using last cached forecast (API temporarily unavailable)")
+            else:
+                st.warning("Forecast service unavailable and no cached data found.")
+                forecast_df = None
+
+        if forecast_df is not None:
+            forecast_fig = forecast_temperature_chart(forecast_df)
+            st.plotly_chart(forecast_fig, use_container_width=True)
+ 
             
 
     except WeatherAPIError as e:

@@ -1,37 +1,51 @@
-from datetime import datetime
 import pandas as pd
 
 
-def process_daily_forecast(forecast_json: dict) -> pd.DataFrame:
+def process_weatherapi_forecast(forecast_json: dict) -> pd.DataFrame:
     """
-    Convert raw forecast API response into a clean analytics dataframe.
+    Process WeatherAPI daily forecast response into an analytics-ready DataFrame.
 
-    Output columns:
-    - date
-    - min_temp
-    - max_temp
-    - avg_temp
-    - humidity
-    - wind_speed
+    Expected WeatherAPI structure:
+    forecast
+      └── forecastday
+            └── day
+                ├── mintemp_c
+                ├── maxtemp_c
+                ├── avgtemp_c
+
+    Output DataFrame columns:
+    - date (datetime)
+    - min_temp (°C)
+    - max_temp (°C)  -> daytime temperature
+    - avg_temp (°C)
     """
 
-    if "list" not in forecast_json:
-        raise ValueError("Invalid forecast data format")
+    # ---------------------------
+    # Validation
+    # ---------------------------
+    if (
+        "forecast" not in forecast_json
+        or "forecastday" not in forecast_json["forecast"]
+    ):
+        raise ValueError("Invalid WeatherAPI forecast format")
 
     records = []
 
-    for day in forecast_json["list"]:
-        record = {
-            "date": datetime.fromtimestamp(day["dt"]).date(),
-            "min_temp": day["temp"]["min"],
-            "max_temp": day["temp"]["max"],
-            "avg_temp": round(
-                (day["temp"]["min"] + day["temp"]["max"]) / 2, 2
-            ),
-            "humidity": day["humidity"],
-            "wind_speed": day["speed"],
-        }
-        records.append(record)
+    # ---------------------------
+    # Extraction
+    # ---------------------------
+    for day in forecast_json["forecast"]["forecastday"]:
+        records.append({
+            "date": day["date"],
+            "min_temp": day["day"]["mintemp_c"],
+            "max_temp": day["day"]["maxtemp_c"],
+            "avg_temp": day["day"]["avgtemp_c"],
+        })
 
+    # ---------------------------
+    # Transformation
+    # ---------------------------
     df = pd.DataFrame(records)
+    df["date"] = pd.to_datetime(df["date"])
+
     return df
