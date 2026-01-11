@@ -1,5 +1,11 @@
 import requests
-from config.settings import WEATHER_API_KEY, BASE_URL, REQUEST_TIMEOUT
+from config.settings import (
+    WEATHER_API_KEY,
+    BASE_URL,
+    WEATHERAPI_KEY,
+    WEATHERAPI_BASE_URL,
+    REQUEST_TIMEOUT
+)
 
 
 class WeatherAPIError(Exception):
@@ -7,9 +13,12 @@ class WeatherAPIError(Exception):
     pass
 
 
+# -----------------------------
+# OpenWeather — current weather
+# -----------------------------
 def fetch_weather(city: str) -> dict:
     if not WEATHER_API_KEY:
-        raise WeatherAPIError("Missing API key")
+        raise WeatherAPIError("Missing OpenWeather API key")
 
     url = f"{BASE_URL}/weather"
     params = {
@@ -35,29 +44,43 @@ def fetch_weather(city: str) -> dict:
         raise WeatherAPIError("Network error while calling Weather API")
 
 
+# -----------------------------
+# WeatherAPI — daily forecast
+# -----------------------------
+import time
 
-def fetch_forecast(city: str, days: int = 5) -> dict:
-    if not WEATHER_API_KEY:
-        raise WeatherAPIError("Missing API key")
+def fetch_daily_forecast_weatherapi(city: str, days: int = 5) -> dict:
+    if not WEATHERAPI_KEY:
+        raise WeatherAPIError("Missing WeatherAPI key")
 
     params = {
+        "key": WEATHERAPI_KEY,
         "q": city,
-        "appid": WEATHER_API_KEY,
-        "units": "metric",
-        "cnt": days
+        "days": days,
+        "aqi": "no",
+        "alerts": "no"
     }
 
-    try:
-        response = requests.get(
-            f"{BASE_URL}/forecast/daily",
-            params=params,
-            timeout=REQUEST_TIMEOUT
-        )
-        response.raise_for_status()
-        return response.json()
+    last_error = None
 
-    except requests.exceptions.Timeout:
-        raise WeatherAPIError("Forecast request timed out")
+    for attempt in range(3):  # retry 3 times
+        try:
+            response = requests.get(
+                f"{WEATHERAPI_BASE_URL}/forecast.json",
+                params=params,
+                timeout=REQUEST_TIMEOUT
+            )
+            response.raise_for_status()
+            return response.json()
 
-    except requests.exceptions.RequestException:
-        raise WeatherAPIError("Failed to fetch forecast data")
+        except requests.exceptions.Timeout as e:
+            last_error = e
+            time.sleep(1)  # small backoff
+
+        except requests.exceptions.RequestException as e:
+            raise WeatherAPIError(
+                f"WeatherAPI request failed: {str(e)}"
+            )
+
+    raise WeatherAPIError("WeatherAPI forecast request timed out after retries")
+ 

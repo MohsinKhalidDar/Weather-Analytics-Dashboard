@@ -3,8 +3,8 @@ import streamlit as st
  
 # Core services & analytics
 
-from services.weather_api import fetch_forecast
-from analytics.forecast_processor import process_daily_forecast
+from services.weather_api import fetch_daily_forecast_weatherapi
+from analytics.weatherapi_forecast_processor import process_weatherapi_forecast
 from visualizations.forecast_charts import forecast_temperature_chart
 
  
@@ -134,16 +134,20 @@ if analyze:
         st.subheader("Weather Forecast (Next 5 Days)")
 
         with st.spinner("Fetching weather forecast..."):
-            forecast_raw = fetch_forecast(features["city"], days=5)
-            forecast_df = process_daily_forecast(forecast_raw)
+            forecast_raw = fetch_daily_forecast_weatherapi(features["city"], days=5)
+            forecast_df = process_weatherapi_forecast(forecast_raw)
 
         forecast_fig = forecast_temperature_chart(forecast_df)
-
         st.plotly_chart(forecast_fig, use_container_width=True)
             
 
     except WeatherAPIError as e:
-        st.error(str(e))
+        st.warning(
+            "Forecast service is temporarily slow. "
+            "Live and historical data are still available.\n\n"
+            f"Details: {e}"
+    )
+
 
     except ValueError as e:
         st.warning(str(e))
