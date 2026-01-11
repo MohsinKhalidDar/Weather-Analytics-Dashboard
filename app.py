@@ -14,6 +14,7 @@ from analytics.processor import extract_features
 from analytics.indicators import comfort_index, wind_risk
 from analytics.health_scores import weather_health_score
 from analytics.weatherapi_forecast_processor import process_weatherapi_forecast
+from analytics.alerts import generate_weather_alerts
 
 from utils.validators import validate_city
 
@@ -21,15 +22,15 @@ from utils.validators import validate_city
 # =========================
 # Visualization layer
 # =========================
-from visualizations.forecast_conditions import render_forecast_conditions
+
 from visualizations.kpis import render_kpis
 from visualizations.charts import (
     temp_comparison_chart,
     radar_weather_chart,
     historical_trend_charts
 )
-
 from visualizations.forecast_charts import forecast_temperature_chart
+from visualizations.forecast_conditions import render_forecast_conditions
 
 
 # =========================
@@ -164,7 +165,6 @@ if analyze:
         # Weather Forecast (Next 5 Days)
         # =============================
 
-        conn = get_db()
         forecast_df = None
         forecast_source = None
 
@@ -174,9 +174,6 @@ if analyze:
                     features["city"], days=5
                 )
                 forecast_df = process_weatherapi_forecast(forecast_raw)
-                
-                # st.write("Forecast DF columns:", forecast_df.columns.tolist()) #--------temporary debug line
-
 
                 # Cache successful forecast
                 insert_forecast(conn, features["city"], forecast_df)
@@ -192,7 +189,20 @@ if analyze:
                 )
 
         # -----------------------------
-        # Render Forecast UI  
+        # Smart Weather Alerts (LIVE + CACHED)
+        # -----------------------------
+        if forecast_df is not None:
+            alerts = generate_weather_alerts(forecast_df)
+
+            if alerts:
+                st.markdown("---")
+                st.subheader("⚠️ Weather Alerts")
+
+                for alert in alerts:
+                    st.warning(alert)
+
+        # -----------------------------
+        # Render Forecast UI
         # -----------------------------
         if forecast_df is not None:
             st.markdown("---")
@@ -204,7 +214,6 @@ if analyze:
 
             st.markdown("### Weather Conditions")
             render_forecast_conditions(forecast_df)
-
 
         else:
             st.markdown("---")
@@ -221,4 +230,3 @@ if analyze:
 
     except ValueError as e:
         st.warning(str(e))
-
