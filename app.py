@@ -5,9 +5,6 @@ from datetime import datetime, timedelta
 # Core services & analytics
 # =========================
 
-from analytics.accuracy import prepare_accuracy_df
-from visualizations.accuracy_charts import accuracy_trend_chart
-
 from services.weather_api import (
     fetch_weather,
     fetch_daily_forecast_weatherapi,
@@ -19,7 +16,7 @@ from analytics.indicators import comfort_index, wind_risk
 from analytics.health_scores import weather_health_score
 from analytics.weatherapi_forecast_processor import process_weatherapi_forecast
 from analytics.alerts import generate_weather_alerts
-from analytics.accuracy import compute_mae
+from analytics.accuracy import compute_mae, prepare_accuracy_df
 
 from utils.validators import validate_city
 
@@ -36,6 +33,7 @@ from visualizations.charts import (
 )
 from visualizations.forecast_charts import forecast_temperature_chart
 from visualizations.forecast_conditions import render_forecast_conditions
+from visualizations.accuracy_charts import accuracy_trend_chart
 
 
 # =========================
@@ -124,10 +122,9 @@ if analyze:
         # Forecast Accuracy Tracking (Actual vs Predicted)
         # ==================================================
         today = datetime.utcnow().date()
-        yesterday = today - timedelta(days=1) 
-        #--------use below line instead of above for testing-Forecast Accuracy Trend--------------------
-        # yesterday = today  
-
+        yesterday = today - timedelta(days=1)
+        # For testing ONLY:
+        # yesterday = today
 
         predicted_avg = fetch_yesterday_forecast(
             conn,
@@ -149,32 +146,6 @@ if analyze:
         # -----------------------------
         st.subheader("Key Metrics")
         render_kpis(features)
-
-        # ---------- Forecast Accuracy KPI ----------
-        accuracy_rows = fetch_forecast_accuracy(conn, features["city"])
-        mae = compute_mae(accuracy_rows)
-
-        if mae is not None:
-            st.metric("📉 Forecast MAE (°C)", mae)
-            
-        # -----------------------------
-        # Forecast Accuracy Trend
-        # -----------------------------
-        accuracy_df = prepare_accuracy_df(accuracy_rows)
-
-        if accuracy_df is not None and len(accuracy_df) >= 2:
-            st.markdown("---")
-            st.subheader("📈 Forecast Accuracy Trend")
-
-            acc_fig = accuracy_trend_chart(accuracy_df)
-            st.plotly_chart(acc_fig, use_container_width=True)
-        else:
-            st.info(
-                "Forecast accuracy trend will appear after multiple days "
-                "of forecast evaluation."
-            )
-            
-            
 
         st.markdown("---")
 
@@ -220,9 +191,31 @@ if analyze:
             )
 
         # =============================
+        # Forecast Model Performance
+        # =============================
+        st.markdown("---")
+        st.subheader("📊 Forecast Model Performance")
+
+        accuracy_rows = fetch_forecast_accuracy(conn, features["city"])
+        mae = compute_mae(accuracy_rows)
+
+        if mae is not None:
+            st.metric("📉 Forecast MAE (°C)", mae)
+
+        accuracy_df = prepare_accuracy_df(accuracy_rows)
+
+        if accuracy_df is not None and len(accuracy_df) >= 2:
+            acc_fig = accuracy_trend_chart(accuracy_df)
+            st.plotly_chart(acc_fig, use_container_width=True)
+        else:
+            st.info(
+                "Forecast accuracy trend will appear after multiple days "
+                "of forecast evaluation."
+            )
+
+        # =============================
         # Weather Forecast (Next 5 Days)
         # =============================
-
         forecast_df = None
         forecast_source = None
 
@@ -233,7 +226,6 @@ if analyze:
                 )
                 forecast_df = process_weatherapi_forecast(forecast_raw)
 
-                # Cache successful forecast
                 insert_forecast(conn, features["city"], forecast_df)
                 forecast_source = "Live forecast data"
 
