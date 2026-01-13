@@ -2,7 +2,6 @@
 
 An industry-grade, analytics-first weather intelligence dashboard built using Streamlit and Python.
 
-## Status
 🚧 Under active development.
 
 ## Goals
