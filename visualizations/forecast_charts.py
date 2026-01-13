@@ -1,3 +1,4 @@
+import pandas as pd
 import plotly.graph_objects as go
 
 
@@ -5,8 +6,14 @@ def forecast_temperature_chart(df):
     """
     Accurate 5-day forecast visualization:
     - Avg temperature as main signal
-    - Min–Max range as uncertainty band
+    - Min-Max range as uncertainty band
+    - Fix duplicate dates on x-axis by forcing date-only + category axis
     """
+
+    df = df.copy()
+
+    # Fix duplicate tick labels (remove time part completely)
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%b %d")
 
     fig = go.Figure()
 
@@ -62,8 +69,9 @@ def forecast_temperature_chart(df):
         )
     )
 
+    # Force category axis (prevents Plotly from duplicating datetime ticks)
     fig.update_xaxes(
-        tickformat="%b %d",
+        type="category",
         showgrid=False
     )
 
