@@ -1,9 +1,14 @@
 import sqlite3
 import pandas as pd
+
 from storage.models import (
     CREATE_WEATHER_TABLE,
     CREATE_FORECAST_ACCURACY_TABLE
 )
+
+# ✅ STEP 2: Import migration runner
+from storage.migrations import run_migrations
+
 
 DB_PATH = "storage/weather.db"
 
@@ -13,9 +18,14 @@ DB_PATH = "storage/weather.db"
 # ==================================================
 def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+
     conn.execute(CREATE_WEATHER_TABLE)
     create_forecast_table(conn)
     conn.execute(CREATE_FORECAST_ACCURACY_TABLE)
+
+    # ✅ STEP 2: Run migrations safely (industry way)
+    run_migrations(conn)
+
     return conn
 
 
