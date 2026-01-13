@@ -7,7 +7,7 @@ try:
 except Exception:
     pass
 
-REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "10"))
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "20"))
 
 BASE_URL = os.getenv("BASE_URL", "https://api.openweathermap.org/data/2.5")
 WEATHERAPI_BASE_URL = os.getenv("WEATHERAPI_BASE_URL", "https://api.weatherapi.com/v1")

@@ -85,12 +85,14 @@ def fetch_daily_forecast_weatherapi(city: str, days: int = 5) -> dict:
                 timeout=REQUEST_TIMEOUT
             )
             latency = time.time() - start
-
+            
+            response.raise_for_status()
+            
             logger.info(
                 f"[WeatherAPI] Attempt {attempt} success | city={city} | latency={latency:.2f}s"
             )
 
-            response.raise_for_status()
+            
             return response.json()
 
         except requests.exceptions.Timeout as e:
