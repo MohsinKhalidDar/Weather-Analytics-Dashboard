@@ -2,10 +2,12 @@ import streamlit as st
 from datetime import datetime, timedelta
 import time
 
+from config.settings import WEATHER_API_KEY, WEATHERAPI_KEY
+
+
 # =========================
 # Core services & analytics
 # =========================
-
 from services.weather_api import (
     fetch_weather,
     fetch_daily_forecast_weatherapi,
@@ -25,7 +27,6 @@ from utils.validators import validate_city
 # =========================
 # Visualization layer
 # =========================
-
 from visualizations.kpis import render_kpis
 from visualizations.charts import (
     temp_comparison_chart,
@@ -40,7 +41,6 @@ from visualizations.accuracy_charts import accuracy_trend_chart
 # =========================
 # Storage layer
 # =========================
-
 from storage.database import (
     get_connection,
     insert_weather,
@@ -56,16 +56,68 @@ from storage.database import (
 # =========================
 # Cached DB connection
 # =========================
-
 @st.cache_resource
 def get_db():
     return get_connection()
 
 
 # =========================
+# Helpers (Latency + time formatting)
+# =========================
+def latency_badge(latency: float | None, warn: float, critical: float) -> str:
+    if latency is None:
+        return "⚪ Not measured yet"
+
+    if latency < warn:
+        return f"🟢 Fast ({latency:.2f}s)"
+
+    if latency < critical:
+        return f"🟡 Slow ({latency:.2f}s)"
+
+    return f"🔴 Critical ({latency:.2f}s)"
+
+
+def format_time(ts: float | None) -> str:
+    if ts is None:
+        return "—"
+    return datetime.fromtimestamp(ts).strftime("%I:%M:%S %p")
+
+
+def render_perf_sidebar(perf_box):
+    """
+    Render sidebar API performance with:
+    - Live latency badge + timestamp
+    - Forecast latency badge + timestamp
+    - Shows "Failed / Timeout" if forecast attempted but failed
+    """
+    live_latency = st.session_state.get("live_latency")
+    forecast_latency = st.session_state.get("forecast_latency")
+
+    live_updated_at = st.session_state.get("live_updated_at")
+    forecast_updated_at = st.session_state.get("forecast_updated_at")
+
+    live_text = latency_badge(live_latency, warn=2, critical=4)
+    forecast_text = latency_badge(forecast_latency, warn=3, critical=6)
+
+    # ✅ If forecast was attempted but failed
+    if forecast_latency is None and forecast_updated_at is not None:
+        forecast_text = "🔴 Failed / Timeout"
+
+    perf_box.markdown(
+        f"""
+        **Live Weather:** {live_text}  
+        <small>Last updated: {format_time(live_updated_at)}</small>
+
+        **Forecast:** {forecast_text}  
+        <small>Last updated: {format_time(forecast_updated_at)}</small>
+        """,
+        unsafe_allow_html=True
+    )
+
+
+# =========================
 # Page config
 # =========================
-
 st.set_page_config(
     page_title="Weather Analytics Dashboard",
     layout="wide"
@@ -76,25 +128,80 @@ st.caption("Industry-grade, analytics-first weather intelligence")
 
 
 # =========================
+# Session state defaults
+# =========================
+if "live_latency" not in st.session_state:
+    st.session_state["live_latency"] = None
+
+if "forecast_latency" not in st.session_state:
+    st.session_state["forecast_latency"] = None
+
+if "live_updated_at" not in st.session_state:
+    st.session_state["live_updated_at"] = None
+
+if "forecast_updated_at" not in st.session_state:
+    st.session_state["forecast_updated_at"] = None
+
+if "last_city" not in st.session_state:
+    st.session_state["last_city"] = ""
+
+
+# =========================
 # Sidebar controls
 # =========================
-
 with st.sidebar:
     st.header("Controls")
-    city = st.text_input("Enter city name")
-    analyze = st.button("Analyze Weather")
+
+    city = st.text_input("Enter city name", value=st.session_state["last_city"])
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        analyze = st.button("Analyze Weather")
+
+    with col2:
+        refresh = st.button("🔄 Refresh")
+
+    # ✅ Refresh triggers analysis again using saved city
+    if refresh:
+        if st.session_state["last_city"]:
+            city = st.session_state["last_city"]
+            analyze = True
+        else:
+            st.warning("No previous city found. Please analyze once first.")
+
+    st.markdown("---")
+    st.subheader("🔐 API Status")
+
+    if WEATHER_API_KEY:
+        st.success("OpenWeather Key: Loaded ✅")
+    else:
+        st.error("OpenWeather Key: Missing ❌")
+
+    if WEATHERAPI_KEY:
+        st.success("WeatherAPI Key: Loaded ✅")
+    else:
+        st.error("WeatherAPI Key: Missing ❌")
+
+    st.markdown("---")
+    st.subheader("📡 API Performance")
+
+    perf_box = st.empty()
+    render_perf_sidebar(perf_box)
 
 
 # =========================
 # Main logic
 # =========================
-
 if analyze:
     try:
         # -----------------------------
         # Validate input
         # -----------------------------
         validate_city(city)
+
+        # ✅ Save city in session so refresh works
+        st.session_state["last_city"] = city
 
         # -----------------------------
         # STEP 5: Live Weather API latency monitoring
@@ -104,7 +211,13 @@ if analyze:
             raw = fetch_weather(city)
             live_latency = time.time() - start
 
-            # UX warning if API is slow
+            # ✅ Store latency + update time
+            st.session_state["live_latency"] = live_latency
+            st.session_state["live_updated_at"] = time.time()
+
+            # ✅ Update sidebar instantly
+            render_perf_sidebar(perf_box)
+
             if live_latency > 2:
                 st.warning("⚠️ Live weather service is slower than usual")
 
@@ -235,16 +348,29 @@ if analyze:
                 )
                 forecast_latency = time.time() - start
 
-                # UX warning if forecast API slow
+                # ✅ Store forecast latency + update time
+                st.session_state["forecast_latency"] = forecast_latency
+                st.session_state["forecast_updated_at"] = time.time()
+
+                # ✅ Update sidebar instantly
+                render_perf_sidebar(perf_box)
+
                 if forecast_latency > 3:
                     st.warning("⚠️ Forecast service is slower than usual")
 
                 forecast_df = process_weatherapi_forecast(forecast_raw)
 
+                # Cache successful forecast
                 insert_forecast(conn, features["city"], forecast_df)
                 forecast_source = "Live forecast data"
 
         except WeatherAPIError:
+            # ✅ Even on fail, mark forecast as "attempted" so sidebar updates
+            st.session_state["forecast_latency"] = None
+            st.session_state["forecast_updated_at"] = time.time()
+            render_perf_sidebar(perf_box)
+
+            # Try cached forecast
             forecast_df = fetch_cached_forecast(conn, features["city"])
 
             if forecast_df is not None:
@@ -252,6 +378,8 @@ if analyze:
                     "Using last cached forecast "
                     "(API temporarily unavailable)"
                 )
+            else:
+                forecast_source = None
 
         # -----------------------------
         # Smart Weather Alerts
