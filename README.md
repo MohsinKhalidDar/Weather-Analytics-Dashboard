@@ -134,3 +134,5 @@ project
 👨‍💻Author
 Mohsin Khalid Dar
 📌GitHub: https://github.com/MohsinKhalidDar  
+
+⭐ If you like this project, consider starring the repository!
