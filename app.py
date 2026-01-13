@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime, timedelta
+import time
 
 # =========================
 # Core services & analytics
@@ -96,10 +97,17 @@ if analyze:
         validate_city(city)
 
         # -----------------------------
-        # Fetch & process live weather
+        # STEP 5: Live Weather API latency monitoring
         # -----------------------------
         with st.spinner("Fetching live weather data..."):
+            start = time.time()
             raw = fetch_weather(city)
+            live_latency = time.time() - start
+
+            # UX warning if API is slow
+            if live_latency > 2:
+                st.warning("⚠️ Live weather service is slower than usual")
+
             features = extract_features(raw)
 
             features["comfort"] = comfort_index(
@@ -214,16 +222,23 @@ if analyze:
             )
 
         # =============================
-        # Weather Forecast (Next 5 Days)
+        # STEP 6: Forecast API latency monitoring
         # =============================
         forecast_df = None
         forecast_source = None
 
         try:
             with st.spinner("Fetching weather forecast..."):
+                start = time.time()
                 forecast_raw = fetch_daily_forecast_weatherapi(
                     features["city"], days=5
                 )
+                forecast_latency = time.time() - start
+
+                # UX warning if forecast API slow
+                if forecast_latency > 3:
+                    st.warning("⚠️ Forecast service is slower than usual")
+
                 forecast_df = process_weatherapi_forecast(forecast_raw)
 
                 insert_forecast(conn, features["city"], forecast_df)

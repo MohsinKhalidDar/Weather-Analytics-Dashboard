@@ -5,8 +5,8 @@ from storage.models import (
     CREATE_FORECAST_ACCURACY_TABLE
 )
 
-
 DB_PATH = "storage/weather.db"
+
 
 # ==================================================
 # Connection
@@ -73,7 +73,7 @@ def fetch_weather_history(city: str, limit: int = 200):
 
 
 # ==================================================
-# Forecast Cache (WITH CONDITIONS)
+# Forecast Cache (WITH CONDITIONS + ICON + RAIN_PROB)
 # ==================================================
 def create_forecast_table(conn):
     conn.execute(
@@ -85,6 +85,8 @@ def create_forecast_table(conn):
             max_temp REAL,
             avg_temp REAL,
             condition TEXT,
+            icon TEXT,
+            rain_prob INTEGER,
             fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
@@ -109,8 +111,10 @@ def insert_forecast(conn, city: str, df: pd.DataFrame):
                 min_temp,
                 max_temp,
                 avg_temp,
-                condition
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                condition,
+                icon,
+                rain_prob
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 city,
@@ -118,7 +122,9 @@ def insert_forecast(conn, city: str, df: pd.DataFrame):
                 row["min_temp"],
                 row["max_temp"],
                 row["avg_temp"],
-                row.get("condition"),  # SAFE access
+                row.get("condition"),
+                row.get("icon"),
+                row.get("rain_prob"),
             ),
         )
 
@@ -133,7 +139,9 @@ def fetch_cached_forecast(conn, city: str):
             min_temp,
             max_temp,
             avg_temp,
-            condition
+            condition,
+            icon,
+            rain_prob
         FROM weather_forecast
         WHERE city = ?
         ORDER BY date
@@ -154,20 +162,27 @@ def fetch_cached_forecast(conn, city: str):
             "max_temp",
             "avg_temp",
             "condition",
+            "icon",
+            "rain_prob",
         ],
     )
 
     df["date"] = pd.to_datetime(df["date"])
     return df
 
-# -----------------------------------
 
+# ==================================================
+# Forecast Accuracy (STEP 4)
+# ==================================================
 def fetch_yesterday_forecast(conn, city: str, date: str):
-    cursor = conn.execute("""
+    cursor = conn.execute(
+        """
         SELECT avg_temp
         FROM weather_forecast
         WHERE city = ? AND date = ?
-    """, (city, date))
+        """,
+        (city, date),
+    )
 
     row = cursor.fetchone()
     return row[0] if row else None
@@ -180,28 +195,49 @@ def insert_forecast_accuracy(
     predicted_avg: float,
     actual_avg: float
 ):
+    """
+    Insert forecast accuracy row.
+    ✅ Idempotent: removes any existing record for same (city, date).
+    """
+
     abs_error = abs(predicted_avg - actual_avg)
 
-    conn.execute("""
+    # ✅ Avoid duplicates on repeated runs
+    conn.execute(
+        """
+        DELETE FROM forecast_accuracy
+        WHERE city = ? AND date = ?
+        """,
+        (city, date),
+    )
+
+    conn.execute(
+        """
         INSERT INTO forecast_accuracy
         (city, date, predicted_avg, actual_avg, abs_error)
         VALUES (?, ?, ?, ?, ?)
-    """, (
-        city,
-        date,
-        predicted_avg,
-        actual_avg,
-        abs_error
-    ))
+        """,
+        (
+            city,
+            date,
+            predicted_avg,
+            actual_avg,
+            abs_error,
+        ),
+    )
+
     conn.commit()
 
 
 def fetch_forecast_accuracy(conn, city: str):
-    cursor = conn.execute("""
+    cursor = conn.execute(
+        """
         SELECT date, abs_error
         FROM forecast_accuracy
         WHERE city = ?
         ORDER BY date
-    """, (city,))
+        """,
+        (city,),
+    )
 
     return cursor.fetchall()
