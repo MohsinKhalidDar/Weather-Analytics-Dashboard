@@ -1,28 +1,33 @@
 import pandas as pd
 import plotly.graph_objects as go
 
+from utils.weather_emojis import condition_to_emoji
+
 
 def forecast_temperature_chart(df):
     """
     Accurate forecast visualization:
     - Avg temperature as main signal
     - Min–Max range as uncertainty band
-    -  Hover tooltips show condition + rain probability
-    -  No duplicate X-axis dates
+    - Hover tooltips show condition + rain probability + emoji
+    - No duplicate X-axis dates
     """
 
     df = df.copy()
 
-    #  Fix duplicate tick labels
+    # Fix duplicate tick labels
     df["date_label"] = pd.to_datetime(df["date"]).dt.strftime("%b %d")
 
-    #  Ensure safe columns exist (for cached data too)
+    # Ensure safe columns exist (for cached data too)
     if "condition" not in df.columns:
         df["condition"] = "N/A"
     if "rain_prob" not in df.columns:
         df["rain_prob"] = None
 
-    #  Custom hover data bundle
+    #  Add emoji mapped from condition
+    df["emoji"] = df["condition"].apply(condition_to_emoji)
+
+    # Custom hover data bundle
     df["rain_prob_display"] = df["rain_prob"].apply(
         lambda x: f"{int(x)}%" if pd.notna(x) else "N/A"
     )
@@ -65,21 +70,22 @@ def forecast_temperature_chart(df):
             line=dict(color="#4FC3F7", width=3),
             marker=dict(size=7),
 
-            #  Attach extra hover values
+            # Attach extra hover values
             customdata=list(zip(
                 df["min_temp"],
                 df["max_temp"],
                 df["condition"],
-                df["rain_prob_display"]
+                df["rain_prob_display"],
+                df["emoji"]
             )),
 
-            #  Beautiful tooltip
+            # Beautiful tooltip
             hovertemplate=(
                 "<b>%{x}</b><br>"
                 "🌡 Avg Temp: <b>%{y:.1f}°C</b><br>"
                 "🔻 Min: %{customdata[0]:.1f}°C<br>"
                 "🔺 Max: %{customdata[1]:.1f}°C<br>"
-                "🌤 Condition: %{customdata[2]}<br>"
+                "%{customdata[4]} Condition: %{customdata[2]}<br>"
                 "🌧 Rain Chance: %{customdata[3]}<br>"
                 "<extra></extra>"
             )
@@ -102,10 +108,15 @@ def forecast_temperature_chart(df):
         )
     )
 
-    # category axis prevents duplicate date ticks
+    # Category axis prevents duplicate date ticks
     fig.update_xaxes(
         type="category",
-        showgrid=False
+        showgrid=False,
+        tickangle=-30,
+        automargin=True,
+        tickmode="array",
+        tickvals=df["date_label"].tolist(),
+        ticktext=df["date_label"].tolist()
     )
 
     fig.update_yaxes(

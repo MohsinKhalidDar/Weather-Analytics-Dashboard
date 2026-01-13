@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+from utils.weather_emojis import condition_to_emoji
 
 
 def render_forecast_conditions(df):
@@ -9,7 +11,6 @@ def render_forecast_conditions(df):
 
     st.subheader("🌤️ Daily Weather Outlook")
 
-    # Cached data safety (no condition info)
     has_conditions = "condition" in df.columns
     has_icons = "icon" in df.columns
     has_rain = "rain_prob" in df.columns
@@ -18,20 +19,18 @@ def render_forecast_conditions(df):
 
     for col, (_, row) in zip(cols, df.iterrows()):
         with col:
-            # Date
-            st.markdown(
-                f"**{row['date'].strftime('%a, %b %d')}**"
-            )
+            st.markdown(f"**{row['date'].strftime('%a, %b %d')}**")
 
-            # Icon (live forecast only)
-            if has_icons:
+            condition_text = row.get("condition", "") if has_conditions else ""
+            emoji = condition_to_emoji(condition_text)
+            st.markdown(f"{emoji}")
+
+            if has_icons and pd.notna(row.get("icon")):
                 st.image(row["icon"], width=48)
 
-            # Condition text
             if has_conditions:
-                st.caption(row["condition"])
+                st.caption(row.get("condition", "N/A"))
 
-            # Temperature summary
             st.markdown(
                 f"""
                 🌡️ **{row['avg_temp']}°C**  
@@ -40,7 +39,7 @@ def render_forecast_conditions(df):
                 unsafe_allow_html=True
             )
 
-            # Rain probability (live forecast only)
-            if has_rain:
-                st.progress(row["rain_prob"] / 100)
-                st.caption(f"🌧️ Rain chance: {row['rain_prob']}%")
+            if has_rain and pd.notna(row.get("rain_prob")):
+                rain_val = int(row["rain_prob"])
+                st.progress(rain_val / 100)
+                st.caption(f"🌧️ Rain chance: {rain_val}%")
