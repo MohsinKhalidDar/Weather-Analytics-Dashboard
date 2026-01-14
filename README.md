@@ -81,15 +81,14 @@ Auto alerts based on forecast thresholds:
 
 ⚙️ Setup Instructions (Local)
 ✅ 1) Clone the repository
-  git clone https://github.com/MohsinKhalidDar/
-  
-  Weather-Analytics-Dashboard.git
-
+  git clone https://github.com/MohsinKhalidDar/Weather-Analytics-Dashboard.git
   cd Weather-Analytics-Dashboard
 ✅ 2) Create a virtual environment
   python -m venv venv (bash)
+  
 ✅ 3) Install dependencies   
   pip install -r requirements.txt
+  
 ✅ 4) Add API keys (Local .env)
   WEATHER_API_KEY=your_openweather_key
   WEATHERAPI_KEY=your_weatherapi_key
@@ -98,6 +97,7 @@ Auto alerts based on forecast thresholds:
 
   WEATHERAPI_BASE_URL=https://api.weatherapi.com/v1
   REQUEST_TIMEOUT=10
+  
 ✅ 5) Run the dashboard
   streamlit run app.py
 
