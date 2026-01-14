@@ -80,9 +80,11 @@ Auto alerts based on forecast thresholds:
 ---
 
 ⚙️ Setup Instructions (Local)
+
 ✅ 1) Clone the repository
   git clone https://github.com/MohsinKhalidDar/Weather-Analytics-Dashboard.git
   cd Weather-Analytics-Dashboard
+  
 ✅ 2) Create a virtual environment
   python -m venv venv (bash)
   
