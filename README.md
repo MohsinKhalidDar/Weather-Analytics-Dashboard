@@ -1,4 +1,4 @@
-# 🌦️ Weather Analytics Dashboard (Industry-Grade)
+# 🌦️ Weather Analytics Dashboard  
 
 An **analytics-first Weather Intelligence Dashboard** built with **Streamlit + Python**, designed like real monitoring tools used by **data analytics, risk, and operations teams**.
 
