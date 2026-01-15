@@ -134,13 +134,13 @@ Auto alerts based on forecast thresholds:
 2.Click Analyze Weather
 
 3.View:
-  KPI Insights
-  Historical trends (builds over multiple runs)
-  5-day forecast
-  Weather alerts
-  Forecast accuracy tracking (builds over days)
+  KPI Insights.
+  Historical trends (builds over multiple runs).
+  5-day forecast.
+  Weather alerts.
+  Forecast accuracy tracking (builds over days).
 
-project
+
 
 🔮Future Improvements
   City-to-city comparison
