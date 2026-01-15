@@ -128,8 +128,11 @@ Auto alerts based on forecast thresholds:
 --
 
 ✅ Usage Guide
+
 1.Enter any city name in sidebar
+
 2.Click Analyze Weather
+
 3.View:
   KPI Insights
   Historical trends (builds over multiple runs)
@@ -146,9 +149,6 @@ project
   Advanced anomaly detection (temperature spikes, unusual humidity trends)
   Email/Slack alerting for severe weather events
   Deploy database to PostgreSQL (Neon/Supabase)  
-
-👨‍💻Author
-Mohsin Khalid Dar
-📌GitHub: https://github.com/MohsinKhalidDar  
+  
 
 ⭐ If you like this project, consider starring the repository!
