@@ -1,5 +1,6 @@
 # 🌦️ Weather Analytics Dashboard  
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://weatheranalyticsdashboard.streamlit.app/)
+
 An **analytics-first Weather Intelligence Dashboard** built with **Streamlit + Python**, designed like real monitoring tools used by **data analytics, risk, and operations teams**.
 
 This project is not a basic API wrapper — it follows **production-style architecture**, includes **historical storage (SQLite)**, **trend analytics**, **5-day forecast**, **forecast accuracy tracking**, and **API observability (latency monitoring + status)**.
